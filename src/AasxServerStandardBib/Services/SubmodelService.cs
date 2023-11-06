@@ -1,4 +1,5 @@
 ﻿
+using AasxDatabaseServer;
 using AasxServer;
 using AasxServerStandardBib.Exceptions;
 using AasxServerStandardBib.Interfaces;
@@ -19,11 +20,15 @@ namespace AasxServerStandardBib.Services
         private readonly IAdminShellPackageEnvironmentService _packageEnvService;
         private readonly IMetamodelVerificationService _verificationService;
 
+        //231106 pmj
+        private readonly DatabaseServer _dbServer;
+
         public SubmodelService(IAppLogger<SubmodelService> logger, IAdminShellPackageEnvironmentService packageEnvService, IMetamodelVerificationService verificationService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger)); ;
             _packageEnvService = packageEnvService;
             _verificationService = verificationService;
+            _dbServer = Program.dbServer;
         }
 
         #region PrivateMethods
@@ -548,6 +553,9 @@ namespace AasxServerStandardBib.Services
             _verificationService.VerifyRequestBody(newSme);
 
             Update.ToUpdateObject(submodelElement, newSme);
+
+            // 231106 pmj
+
 
             Program.signalNewData(0);
         }

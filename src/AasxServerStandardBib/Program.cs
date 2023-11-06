@@ -130,7 +130,7 @@ namespace AasxServer
 
         // TODO: Database Server obj
         // 231103 pmj
-        static DatabaseServer dbServer = new DatabaseServer();
+        public static DatabaseServer dbServer = new DatabaseServer();
 
         static MqttServer AASMqttServer = new MqttServer();
 
@@ -553,13 +553,13 @@ namespace AasxServer
                                 dbServer.insertIntoAssetInformationTbl(id, aas.AssetInformation.AssetKind, aas.AssetInformation.GlobalAssetId, aas.AssetInformation.AssetType);
                                 dbServer.insertIntoResourceTbl(id, aas.AssetInformation.DefaultThumbnail.Path, aas.AssetInformation.DefaultThumbnail.ContentType);
 
-                                var submodels = aas.Submodels;
+                                var references = aas.Submodels;
                                 int i = 0;
-                                foreach(var submodel in submodels)
+                                foreach(var reference in references)
                                 {
                                     int j = 0;
-                                    dbServer.insertIntoReferenceTbl(id, i, submodel.Type);
-                                    var keys = submodel.Keys;
+                                    dbServer.insertIntoReferenceTbl(id, i, reference.Type);
+                                    var keys = reference.Keys;
                                     foreach(var key in keys)
                                     {
                                         dbServer.insertIntoReferenceKeyTbl(id, i, j, key.Type, key.Value);
@@ -568,6 +568,24 @@ namespace AasxServer
                                     ++i;
                                 }
                             }
+
+                            /*var submodels = aasEnv.Submodels;
+                            foreach(var submodel in submodels)
+                            {
+                                dbServer.insertIntoSubmodelTbl(submodel.IdShort, submodel.Id, submodel.TimeStampCreate, submodel.TimeStamp, submodel.TimeStampTree);
+
+                                var elements = submodel.SubmodelElements;
+                                int i = 0;
+                                foreach(var element in elements)
+                                {
+                                    Console.WriteLine(element.IdShort);
+                                    foreach(var ex in element.Extensions)
+                                    {
+                                        Console.WriteLine(ex.Value);
+                                    }
+                                    Console.WriteLine();
+                                }
+                            }*/
                         }
                     }
                 }
