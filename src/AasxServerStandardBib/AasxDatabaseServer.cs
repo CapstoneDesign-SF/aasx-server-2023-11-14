@@ -14,15 +14,15 @@ namespace AasxDatabaseServer
     public class DatabaseServer
     {
         // DB 서버 주소. 로컬일 경우 localhost
-        private string _server = "localhost";
+        private string _server = "aas-database.cjhnbi27czq0.ap-northeast-2.rds.amazonaws.com";
         // DB 서버 포트
         private int _port = 3306;
         // DB 이름
         private string _database = "aas_db_test";
         // 계정 아이디
-        private string _id = "root";
+        private string _id = "admin";
         // 계정 비밀번호
-        private string _pw = "0000";
+        private string _pw = "whdgkqtjfrP";
 
         private string _connectionAddress = "";
         
