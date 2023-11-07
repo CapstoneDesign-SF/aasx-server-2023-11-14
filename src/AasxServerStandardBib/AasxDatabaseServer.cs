@@ -7,25 +7,34 @@ using System.Linq.Expressions;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using AasxServerStandardBib.Logging;
+using Google.Protobuf.WellKnownTypes;
+using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
+using Newtonsoft.Json.Linq;
 
 namespace AasxDatabaseServer
 {
     public class DatabaseServer
     {
         // DB 서버 주소. 로컬일 경우 localhost
-        private string _server = "aas-database.cjhnbi27czq0.ap-northeast-2.rds.amazonaws.com";
+        //private string _server = "aas-database.cjhnbi27czq0.ap-northeast-2.rds.amazonaws.com";
+        private string _server = "localhost";
         // DB 서버 포트
         private int _port = 3306;
         // DB 이름
         private string _database = "aas_db_test";
         // 계정 아이디
-        private string _id = "admin";
+        //private string _id = "admin";
+        private string _id = "root";
         // 계정 비밀번호
-        private string _pw = "whdgkqtjfrP";
+        //private string _pw = "whdgkqtjfrP";
+        private string _pw = "0000";
 
         private string _connectionAddress = "";
-        
+
+        private static ILogger _logger = ApplicationLogging.CreateLogger("DatabaseServer");
+
 
         public DatabaseServer() {
             _connectionAddress = string.Format("Server={0};Port={1};Database={2};Uid={3};Pwd={4}", _server, _port, _database, _id, _pw);
@@ -274,16 +283,81 @@ namespace AasxDatabaseServer
 
         }
 
-        // insert into table Operational data
+        // insert into table Property
+        public bool insertSubmodelPropertyTbl(string submodelIdentifier, string idShortPath, ISubmodelElement newSme)
+        {
+            try
+            {
+                if(newSme is Property property)
+                {
+                    using (MySqlConnection mysql = new MySqlConnection(_connectionAddress))
+                    {
+                        mysql.Open();
+
+                        string insertQuery = string.Format("INSERT INTO property (submodel_id,id_short_path,category,id_short,value_type,value,model_type)" +
+                            " VALUES ('{0}','{1}','{2}','{3}','{4}',{5},'{6}');",
+                            submodelIdentifier, idShortPath, property.Category, property.IdShort, property.ValueType, property.Value, "Property");
+
+                        MySqlCommand cmd = new MySqlCommand(insertQuery, mysql);
+                        if (cmd.ExecuteNonQuery() != 1)
+                        {
+                            _logger.LogWarning($"Failed to insert to table 'property'");
+                            return false;
+                        }
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+
+            _logger.LogInformation($"Success insert to table 'property'");
+            return true;
+        }
+
+        // insert into table Property Log
+        public bool insertSubmodelPropertyLogTbl(string submodelIdentifier, string idShortPath, ISubmodelElement newSme)
+        {
+            try
+            {
+                if (newSme is Property property)
+                {
+                    using (MySqlConnection mysql = new MySqlConnection(_connectionAddress))
+                    {
+                        mysql.Open();
+
+                        string insertQuery = string.Format("INSERT INTO property_log (submodel_id,id_short_path,category,id_short,value_type,value,model_type)" +
+                            " VALUES ('{0}','{1}','{2}','{3}','{4}',{5},'{6}');",
+                            submodelIdentifier, idShortPath, property.Category, property.IdShort, property.ValueType, property.Value, "Property");
+
+                        MySqlCommand cmd = new MySqlCommand(insertQuery, mysql);
+                        if (cmd.ExecuteNonQuery() != 1)
+                        {
+                            _logger.LogWarning($"Failed to insert to table 'property_log'");
+                            return false;
+                        }
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+
+            _logger.LogInformation($"Success insert to table 'property_log'");
+            return true;
+        }
         #endregion
 
         // TODO: SELECT command for MySql server
         #region // SELECT
-
-        #endregion
-
-        #region // UPDATE
-        /*public bool updateOperationalData(string inputData)
+        // select from table Property by submodel id and idShort
+        public bool selectSubmodelPropertyTblBySubmodelIdAndIdShor(string submodelIdentifier, string idShortPath)
         {
             try
             {
@@ -291,13 +365,17 @@ namespace AasxDatabaseServer
                 {
                     mysql.Open();
 
-                    string updateQuery = string.Format("UPDATE submodel_element SET (category,id_short,value_type,value,model_type,id,submodel_submodel_id)" +
-                        " VALUES ('{0}','{1}','{2}',{3},'{4}',{5},'{6}');",
-                        sCategory, sIdShort, sValueType, fValue, sModelType, iId, sSubId);
+                    string updateQuery = string.Format("SELECT * FROM property" +
+                        " WHERE submodel_id='{0}' AND id_short_path='{1}';",
+                        submodelIdentifier, idShortPath);
 
-                    MySqlCommand cmd = new MySqlCommand(insertQuery, mysql);
-                    if (cmd.ExecuteNonQuery() != 1)
+                    MySqlCommand cmd = new MySqlCommand(updateQuery, mysql);
+                    MySqlDataReader table = cmd.ExecuteReader();
+
+                    bool fieldCnt = table.HasRows;
+                    if (!fieldCnt)
                     {
+                        _logger.LogWarning($"Result of SELECT has NO rows");
                         return false;
                     }
                 }
@@ -308,8 +386,56 @@ namespace AasxDatabaseServer
                 return false;
             }
 
+            _logger.LogInformation($"Result of SELECT has rows");
             return true;
-        }*/
+        }
+        #endregion
+
+        #region // UPDATE
+        // update table Property by submodel id and idShort
+        public bool updateSubmodelPropertyTblBySubmodelIdAndIdShor(string submodelIdentifier, string idShortPath, ISubmodelElement newSme)
+        {
+            try
+            {
+                using (MySqlConnection mysql = new MySqlConnection(_connectionAddress))
+                {
+                    mysql.Open();
+
+                    if (newSme is Property property)
+                    {
+                        var category = property.Category;
+                        var idShort = property.IdShort;
+                        var valueType = property.ValueType;
+                        var value = property.Value;
+                        string modelType = "Property";
+
+                        string updateQuery = string.Format("UPDATE property SET submodel_id='{0}',id_short_path='{1}',category='{2}',id_short='{3}',value_type='{4}',value='{5}',model_type='{6}',timestamp='{7}'" +
+                        " WHERE submodel_id='{0}' AND id_short_path='{1}';",
+                        submodelIdentifier, idShortPath, category, idShort, valueType, value, modelType, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                        MySqlCommand cmd = new MySqlCommand(updateQuery, mysql);
+                        if (cmd.ExecuteNonQuery() != 1)
+                        {
+                            _logger.LogWarning($"Failed to update table 'property'");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Failed to update table 'property' becuase newSme is NOT property");
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+
+            _logger.LogInformation($"Success to update table 'property'");
+            return true;
+        }
         #endregion
     }
 }

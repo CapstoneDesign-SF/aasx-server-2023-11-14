@@ -548,14 +548,34 @@ namespace AasxServerStandardBib.Services
         public void UpdateSubmodelElementByPath(string submodelIdentifier, string idShortPath, ISubmodelElement newSme)
         {
             var submodelElement = GetSubmodelElementByPath(submodelIdentifier, idShortPath);
+            //231107 pmj
+            bool isSubmodelExistAtDB = _dbServer.selectSubmodelPropertyTblBySubmodelIdAndIdShor(submodelIdentifier, idShortPath);
+            if (!isSubmodelExistAtDB)
+            {
+                // 초기 값은 Program.cs Run으로 이동 예정.
+                _dbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, submodelElement);
+            }
+            //...
 
             //Verify the body first
             _verificationService.VerifyRequestBody(newSme);
 
             Update.ToUpdateObject(submodelElement, newSme);
 
-            // 231106 pmj
-
+            //231107 pmj
+            var newSubmodelElement = GetSubmodelElementByPath(submodelIdentifier, idShortPath);
+            
+            if (isSubmodelExistAtDB)
+            {
+                _dbServer.updateSubmodelPropertyTblBySubmodelIdAndIdShor(submodelIdentifier, idShortPath, newSubmodelElement);
+                _dbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, newSubmodelElement);
+            }
+            else
+            {
+                _dbServer.insertSubmodelPropertyTbl(submodelIdentifier, idShortPath, newSubmodelElement);
+                _dbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, newSubmodelElement);
+            }
+            //...
 
             Program.signalNewData(0);
         }
