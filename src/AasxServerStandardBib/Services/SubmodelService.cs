@@ -21,14 +21,16 @@ namespace AasxServerStandardBib.Services
         private readonly IMetamodelVerificationService _verificationService;
 
         //231106 pmj
-        private readonly DatabaseServer _dbServer;
+        private readonly DatabaseServer _localDbServer;
+        private readonly DatabaseServer _cloudDbServer;
 
         public SubmodelService(IAppLogger<SubmodelService> logger, IAdminShellPackageEnvironmentService packageEnvService, IMetamodelVerificationService verificationService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger)); ;
             _packageEnvService = packageEnvService;
             _verificationService = verificationService;
-            _dbServer = Program.dbServer;
+            _localDbServer = Program.localDbServer;
+            _cloudDbServer = Program.cloudDbServer;
         }
 
         #region PrivateMethods
@@ -549,11 +551,11 @@ namespace AasxServerStandardBib.Services
         {
             var submodelElement = GetSubmodelElementByPath(submodelIdentifier, idShortPath);
             //231107 pmj
-            bool isSubmodelExistAtDB = _dbServer.selectSubmodelPropertyTblBySubmodelIdAndIdShor(submodelIdentifier, idShortPath);
+            bool isSubmodelExistAtDB = _localDbServer.selectSubmodelPropertyTblBySubmodelIdAndIdShor(submodelIdentifier, idShortPath);
             if (!isSubmodelExistAtDB)
             {
                 // 초기 값은 Program.cs Run으로 이동 예정.
-                _dbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, submodelElement);
+                _localDbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, submodelElement);
             }
             //...
 
@@ -567,18 +569,48 @@ namespace AasxServerStandardBib.Services
             
             if (isSubmodelExistAtDB)
             {
-                _dbServer.updateSubmodelPropertyTblBySubmodelIdAndIdShor(submodelIdentifier, idShortPath, newSubmodelElement);
-                _dbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, newSubmodelElement);
+                _localDbServer.updateSubmodelPropertyTblBySubmodelIdAndIdShor(submodelIdentifier, idShortPath, newSubmodelElement);
+                _localDbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, newSubmodelElement);
             }
             else
             {
-                _dbServer.insertSubmodelPropertyTbl(submodelIdentifier, idShortPath, newSubmodelElement);
-                _dbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, newSubmodelElement);
+                _localDbServer.insertSubmodelPropertyTbl(submodelIdentifier, idShortPath, newSubmodelElement);
+                _localDbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, newSubmodelElement);
             }
             //...
 
             Program.signalNewData(0);
         }
+
+        //231114 pmj
+        public void PushSubmodelElementValueWithPath(string submodelIdentifier, string idShortPath, string timeSince)
+        {
+            //231114 pmj
+            var submodelElement = GetSubmodelElementByPath(submodelIdentifier, idShortPath);
+
+            DateTime oTimeSince = DateTime.Now.AddSeconds(-Convert.ToInt32(timeSince));
+            if (_localDbServer.selectSubmodelPropertyLogTblDuringTimeBySubmodelIdAndIdShort(submodelIdentifier, idShortPath, oTimeSince)){
+                // TODO: interpoloation, extrapolation 적용
+                int valueAvg = _localDbServer.selectValueAvgFromPropertyLogTblDuringTimeBySubmodelIdAndIdShort(submodelIdentifier, idShortPath, oTimeSince);
+                if(valueAvg != -1)
+                {
+                    submodelElement.ValueFromText(Convert.ToString(valueAvg));
+                    submodelElement.SetTimeStamp(DateTime.Now);
+                    _cloudDbServer.insertSubmodelPropertyLogTbl(submodelIdentifier, idShortPath, submodelElement);
+                }
+                else if (valueAvg == 0){
+                    _logger.LogInformation("Ther is no new data since last call");
+                }
+                else
+                {
+                    _logger.LogError("Error while calculating avg of property value.");
+                    return;
+                }
+            }
+            
+            //...
+        }
+        //...
 
         public void ReplaceFileByPath(string submodelIdentifier, string idShortPath, string fileName, string contentType, MemoryStream fileContent)
         {

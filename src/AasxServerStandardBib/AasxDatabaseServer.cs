@@ -19,25 +19,31 @@ namespace AasxDatabaseServer
     {
         // DB 서버 주소. 로컬일 경우 localhost
         //private string _server = "aas-database.cjhnbi27czq0.ap-northeast-2.rds.amazonaws.com";
-        private string _server = "localhost";
+        //private string _server = "localhost";
         // DB 서버 포트
-        private int _port = 3306;
+        //private int _port = 3306;
         // DB 이름
-        private string _database = "aas_db_test";
+        //private string _database = "aas_db_test";
         // 계정 아이디
         //private string _id = "admin";
-        private string _id = "root";
+        //private string _id = "root";
         // 계정 비밀번호
         //private string _pw = "whdgkqtjfrP";
-        private string _pw = "0000";
+        //private string _pw = "0000";
 
         private string _connectionAddress = "";
 
         private static ILogger _logger = ApplicationLogging.CreateLogger("DatabaseServer");
 
 
-        public DatabaseServer() {
-            _connectionAddress = string.Format("Server={0};Port={1};Database={2};Uid={3};Pwd={4}", _server, _port, _database, _id, _pw);
+        public DatabaseServer(string sServer = "localhost",
+            int iPort = 3306,
+            string sDatabase = "aas_db_test",
+            string sId = "root",
+            string sPw = "0000") {
+
+            _connectionAddress = string.Format("Server={0};Port={1};Database={2};Uid={3};Pwd={4}",
+                sServer, iPort, sDatabase, sId, sPw);
         }
 
         // Method to check MySql server is availlable.
@@ -332,6 +338,7 @@ namespace AasxDatabaseServer
                         string insertQuery = string.Format("INSERT INTO property_log (submodel_id,id_short_path,category,id_short,value_type,value,model_type)" +
                             " VALUES ('{0}','{1}','{2}','{3}','{4}',{5},'{6}');",
                             submodelIdentifier, idShortPath, property.Category, property.IdShort, property.ValueType, property.Value, "Property");
+                        _logger.LogDebug(insertQuery);
 
                         MySqlCommand cmd = new MySqlCommand(insertQuery, mysql);
                         if (cmd.ExecuteNonQuery() != 1)
@@ -388,6 +395,80 @@ namespace AasxDatabaseServer
 
             _logger.LogInformation($"Result of SELECT has rows");
             return true;
+        }
+
+        // select from table Property by submodel id and idShort during time
+        public bool selectSubmodelPropertyLogTblDuringTimeBySubmodelIdAndIdShort(string submodelIdentifier, string idShortPath, DateTime timeSince)
+        {
+            try
+            {
+                using (MySqlConnection mysql = new MySqlConnection(_connectionAddress))
+                {
+                    mysql.Open();
+
+                    string selectQuery = string.Format("SELECT * FROM property_log" +
+                        " WHERE submodel_id='{0}' AND id_short_path='{1}'" +
+                        " AND timestamp > '{2}';",
+                        submodelIdentifier, idShortPath, timeSince.ToString("yyyy-MM-dd HH:mm:ss"));
+                    _logger.LogDebug(selectQuery);
+
+                    MySqlCommand cmd = new MySqlCommand(selectQuery, mysql);
+                    MySqlDataReader table = cmd.ExecuteReader();
+
+                    bool fieldCnt = table.HasRows;
+                    if (!fieldCnt)
+                    {
+                        _logger.LogWarning($"Result of SELECT has NO rows");
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return false;
+            }
+
+            _logger.LogInformation($"Result of SELECT has rows");
+            return true;
+        }
+
+        // select average during [time] of property's value by submodel id and idShort.
+        public int selectValueAvgFromPropertyLogTblDuringTimeBySubmodelIdAndIdShort(string submodelIdentifier, string idShortPath, DateTime timeSince)
+        {
+            try
+            {
+                using (MySqlConnection mysql = new MySqlConnection(_connectionAddress))
+                {
+                    mysql.Open();
+
+                    string selectQuery = string.Format("SELECT AVG(value) AS AVG FROM property_log" +
+                        " WHERE submodel_id='{0}' AND id_short_path='{1}'" +
+                        " AND timestamp > '{2}';",
+                        submodelIdentifier, idShortPath, timeSince.ToString("yyyy-MM-dd HH:mm:ss"));
+                    _logger.LogDebug(selectQuery);
+
+                    MySqlCommand cmd = new MySqlCommand(selectQuery, mysql);
+                    MySqlDataReader table = cmd.ExecuteReader();
+
+                    if (table.Read())
+                    {
+                        int avg = Convert.ToInt32(Math.Round(Convert.ToDouble(table["AVG"])));
+                        _logger.LogInformation($"Result of SELECT has rows. AVG is {avg}");
+                        return avg;
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Result of SELECT has NO rows");
+                        return -1;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return -1;
+            }
         }
         #endregion
 

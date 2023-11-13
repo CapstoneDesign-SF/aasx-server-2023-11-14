@@ -32,6 +32,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Mime;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace IO.Swagger.Controllers
 {
@@ -53,6 +55,9 @@ namespace IO.Swagger.Controllers
         private readonly IPaginationService _paginationService;
         private readonly IAuthorizationService _authorizationService;
 
+        // pmj 231114 비동기 처리
+        private readonly Dictionary<string, Timer> _timers;
+
         public SubmodelRepositoryAPIApiController(IAppLogger<SubmodelRepositoryAPIApiController> logger, IBase64UrlDecoderService decoderService, ISubmodelService submodelService, IReferenceModifierService referenceModifierService, IJsonQueryDeserializer jsonQueryDeserializer, IMappingService mappingService, IPathModifierService pathModifierService, ILevelExtentModifierService levelExtentModifierService, IPaginationService paginationService, IAuthorizationService authorizationService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -65,6 +70,9 @@ namespace IO.Swagger.Controllers
             _levelExtentModifierService = levelExtentModifierService ?? throw new ArgumentNullException(nameof(pathModifierService));
             _paginationService = paginationService ?? throw new ArgumentNullException(nameof(pathModifierService));
             _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
+
+            // pmj 231114 비동기 처리
+            _timers = new Dictionary<string, Timer>();
         }
         /// <summary>
         /// Deletes file content of an existing submodel element at a specified path within submodel elements hierarchy
@@ -1730,6 +1738,95 @@ namespace IO.Swagger.Controllers
 
             return NoContent();
         }
+
+        #region Patch asynch by pmj 231114
+
+        /// <summary>
+        /// Push Existing Submodel Element "Value" to cloud database asynchronously
+        /// </summary>
+        /// <param name="body">SubmodelElement object</param>
+        /// <param name="submodelIdentifier">The Submodel’s unique id (UTF8-BASE64-URL-encoded)</param>
+        /// <param name="idShortPath">IdShort path to the submodel element (dot-separated)</param>
+        /// <param name="level">Determines the structural depth of the respective resource content</param>
+        /// <response code="204">SubmodelElement updated successfully</response>
+        /// <response code="400">Bad Request, e.g. the request parameters of the format of the request body is wrong.</response>
+        /// <response code="401">Unauthorized, e.g. the server refused the authorization attempt.</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="0">Default error handling for unmentioned status codes</response>
+        [HttpPatch]
+        [Route("/submodels/{submodelIdentifier}/submodel-elements/{idShortPath}/pubon/{timeOut}")]
+        [ValidateModelState]
+        [SwaggerOperation("PushExistingSubmodelElementValueToCloudDatabaseAsynchronously")]
+        [SwaggerResponse(statusCode: 400, type: typeof(Result), description: "Bad Request, e.g. the request parameters of the format of the request body is wrong.")]
+        [SwaggerResponse(statusCode: 401, type: typeof(Result), description: "Unauthorized, e.g. the server refused the authorization attempt.")]
+        [SwaggerResponse(statusCode: 403, type: typeof(Result), description: "Forbidden")]
+        [SwaggerResponse(statusCode: 404, type: typeof(Result), description: "Not Found")]
+        [SwaggerResponse(statusCode: 500, type: typeof(Result), description: "Internal Server Error")]
+        [SwaggerResponse(statusCode: 0, type: typeof(Result), description: "Default error handling for unmentioned status codes")]
+        public async Task<IActionResult> InvokePatchSubmodelElementByPathSubmodelRepoAsynch([FromRoute][Required] string submodelIdentifier, [FromRoute][Required] string idShortPath, [FromQuery] LevelEnum level, [FromRoute][Required] string timeOut)
+        {
+            var decodedSubmodelIdentifier = _decoderService.Decode("submodelIdentifier", submodelIdentifier);
+
+            _logger.LogInformation($"Received request to push existing submodel element at {idShortPath} from submodel with id {decodedSubmodelIdentifier} \"Value\" to cloud database asynchronously.");
+            var timer = new Timer(async _ =>
+            {
+                _logger.LogInformation($"[Async] Push existing submodel element at {idShortPath} from submodel with id {decodedSubmodelIdentifier} \"Value\" to cloud database asynchronously.");
+                _submodelService.PushSubmodelElementValueWithPath(decodedSubmodelIdentifier, idShortPath, timeOut);
+            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(Convert.ToInt32(timeOut))
+            );
+
+            _timers[idShortPath] = timer;
+            _logger.LogDebug(idShortPath);
+            _logger.LogDebug(Convert.ToString(_timers.TryGetValue(idShortPath, out var ttimer)));
+
+            return NoContent();
+        }
+
+        // TODO: suboff 기능 안됨. TryGetValue가 False 반환
+        /// <summary>
+        /// Stop Pushing Existing Submodel Element "Value" to cloud database
+        /// </summary>
+        /// <param name="body">SubmodelElement object</param>
+        /// <param name="submodelIdentifier">The Submodel’s unique id (UTF8-BASE64-URL-encoded)</param>
+        /// <param name="idShortPath">IdShort path to the submodel element (dot-separated)</param>
+        /// <param name="level">Determines the structural depth of the respective resource content</param>
+        /// <response code="204">SubmodelElement updated successfully</response>
+        /// <response code="400">Bad Request, e.g. the request parameters of the format of the request body is wrong.</response>
+        /// <response code="401">Unauthorized, e.g. the server refused the authorization attempt.</response>
+        /// <response code="403">Forbidden</response>
+        /// <response code="404">Not Found</response>
+        /// <response code="500">Internal Server Error</response>
+        /// <response code="0">Default error handling for unmentioned status codes</response>
+        [HttpPatch]
+        [Route("/submodels/{submodelIdentifier}/submodel-elements/{idShortPath}/puboff")]
+        [ValidateModelState]
+        [SwaggerOperation("StopPushingExistingSubmodelElementValueToCloudDatabase")]
+        [SwaggerResponse(statusCode: 400, type: typeof(Result), description: "Bad Request, e.g. the request parameters of the format of the request body is wrong.")]
+        [SwaggerResponse(statusCode: 401, type: typeof(Result), description: "Unauthorized, e.g. the server refused the authorization attempt.")]
+        [SwaggerResponse(statusCode: 403, type: typeof(Result), description: "Forbidden")]
+        [SwaggerResponse(statusCode: 404, type: typeof(Result), description: "Not Found")]
+        [SwaggerResponse(statusCode: 500, type: typeof(Result), description: "Internal Server Error")]
+        [SwaggerResponse(statusCode: 0, type: typeof(Result), description: "Default error handling for unmentioned status codes")]
+        public IActionResult KillPatchSubmodelElementByPathSubmodelRepoAsynch([FromRoute][Required] string submodelIdentifier, [FromRoute][Required] string idShortPath)
+        {
+            var decodedSubmodelIdentifier = _decoderService.Decode("submodelIdentifier", submodelIdentifier);
+
+            _logger.LogDebug(idShortPath);
+            _logger.LogDebug(Convert.ToString(_timers.TryGetValue(idShortPath, out var ttimer)));
+            if (_timers.TryGetValue(idShortPath, out var timer))
+            {
+                _logger.LogInformation($"[Async] Kill pushing existing submodel element at {idShortPath} from submodel with id {decodedSubmodelIdentifier} to cloud server.");
+                timer.Dispose();
+                _timers.Remove(idShortPath);
+                return NoContent();
+            }
+
+            return NotFound();
+        }
+
+        #endregion
 
         /// <summary>
         /// Updates the value of an existing SubmodelElement

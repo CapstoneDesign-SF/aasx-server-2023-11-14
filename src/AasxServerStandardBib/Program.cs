@@ -6,6 +6,7 @@ using AasxRestServerLibrary;
 using AdminShellNS;
 using Extensions;
 using Jose;
+using Microsoft.AspNetCore.Hosting.Server;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Opc.Ua;
@@ -130,7 +131,14 @@ namespace AasxServer
 
         // TODO: Database Server obj
         // 231103 pmj
-        public static DatabaseServer dbServer = new DatabaseServer();
+        public static DatabaseServer localDbServer = new DatabaseServer();
+        public static DatabaseServer cloudDbServer = new DatabaseServer(
+            "aas-database.cjhnbi27czq0.ap-northeast-2.rds.amazonaws.com",
+            3306,
+            "aas_db_test",
+            "admin",
+            "whdgkqtjfrP"
+            );
 
         static MqttServer AASMqttServer = new MqttServer();
 
@@ -536,7 +544,8 @@ namespace AasxServer
 
             if (a.WithDb)
             {
-                dbServer.testConnection();
+                localDbServer.testConnection();
+                cloudDbServer.testConnection();
                 // env test
                 foreach (var e in env)
                 {
@@ -549,20 +558,20 @@ namespace AasxServer
                             foreach(var aas in aass)
                             {
                                 var id = aas.Id;
-                                dbServer.insertIntoAASTbl(aas.Category, aas.IdShort, id, aas.TimeStampCreate, aas.TimeStamp, aas.TimeStampTree);
-                                dbServer.insertIntoAssetInformationTbl(id, aas.AssetInformation.AssetKind, aas.AssetInformation.GlobalAssetId, aas.AssetInformation.AssetType);
-                                dbServer.insertIntoResourceTbl(id, aas.AssetInformation.DefaultThumbnail.Path, aas.AssetInformation.DefaultThumbnail.ContentType);
+                                localDbServer.insertIntoAASTbl(aas.Category, aas.IdShort, id, aas.TimeStampCreate, aas.TimeStamp, aas.TimeStampTree);
+                                localDbServer.insertIntoAssetInformationTbl(id, aas.AssetInformation.AssetKind, aas.AssetInformation.GlobalAssetId, aas.AssetInformation.AssetType);
+                                localDbServer.insertIntoResourceTbl(id, aas.AssetInformation.DefaultThumbnail.Path, aas.AssetInformation.DefaultThumbnail.ContentType);
 
                                 var references = aas.Submodels;
                                 int i = 0;
                                 foreach(var reference in references)
                                 {
                                     int j = 0;
-                                    dbServer.insertIntoReferenceTbl(id, i, reference.Type);
+                                    localDbServer.insertIntoReferenceTbl(id, i, reference.Type);
                                     var keys = reference.Keys;
                                     foreach(var key in keys)
                                     {
-                                        dbServer.insertIntoReferenceKeyTbl(id, i, j, key.Type, key.Value);
+                                        localDbServer.insertIntoReferenceKeyTbl(id, i, j, key.Type, key.Value);
                                         ++j;
                                     }
                                     ++i;
