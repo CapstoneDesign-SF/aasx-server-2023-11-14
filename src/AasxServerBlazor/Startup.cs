@@ -27,6 +27,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
+using Steeltoe.Discovery.Client;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -175,6 +176,9 @@ namespace AasxServerBlazor
                     policy.Requirements.Add(new SecurityRequirement());
                 });
             });
+
+            // eureka
+            services.AddDiscoveryClient();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
