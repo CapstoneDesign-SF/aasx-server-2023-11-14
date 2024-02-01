@@ -71,4 +71,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Steeltoe.Common.Hosting" Version="3.2.6" />
+    <PackageReference Include="Steeltoe.Discovery.Eureka" Version="3.2.6" />
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.1.0" />
+  </ItemGroup>
 </Project>
