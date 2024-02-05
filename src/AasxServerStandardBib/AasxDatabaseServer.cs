@@ -62,7 +62,7 @@ namespace AasxDatabaseServer
         {
             try
             {
-                _logger.LogInformation(_connectionAddress);
+                Console.WriteLine(_connectionAddress);
                 using (MySqlConnection mysql = new MySqlConnection(_connectionAddress))
                 {
                     mysql.Open();

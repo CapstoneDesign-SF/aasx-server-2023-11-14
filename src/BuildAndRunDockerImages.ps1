@@ -31,6 +31,7 @@ function Main
 
     docker run `
         -p 55001:5001 `
+        -p 55000:5000 `
         --name aasx-server-test `
         $imageTag `
         .
