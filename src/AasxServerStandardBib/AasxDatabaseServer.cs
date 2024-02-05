@@ -36,7 +36,7 @@ namespace AasxDatabaseServer
         private static ILogger _logger = ApplicationLogging.CreateLogger("DatabaseServer");
 
 
-        public DatabaseServer(string sServer = "localhost",
+        public DatabaseServer(string sServer = "host.docker.internal",
             int iPort = 3306,
             string sDatabase = "aas_db_test",
             string sId = "root",

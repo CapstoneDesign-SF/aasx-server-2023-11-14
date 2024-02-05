@@ -30,7 +30,8 @@ else
     echo "Directory '$DIR_PATH' does not exist."
 fi
 
-powershell -File ./src/BuildForRelease.ps1
+#powershell -File ./src/BuildForRelease.ps1
+pwsh -File ./src/BuildForRelease.ps1
 sleep 5
 cd ./artefacts/build/Release/AasxServerBlazor
 chmod +x startForDemo.sh
