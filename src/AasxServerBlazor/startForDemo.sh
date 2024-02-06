@@ -1,6 +1,6 @@
 #cd
 #cd ./OSSPs/aasx-server-2023-11-06/artefacts/build/Release/AasxServerBlazor/
-nohup dotnet AasxServerBlazor.dll --no-security --data-path ./aasxs --with-db --host 0.0.0.0 2>&1
+nohup dotnet AasxServerBlazor.dll --no-security --data-path ./aasxs --with-db --host 0.0.0.0 2>&1 &
 #nohup dotnet AasxServerBlazor.dll --no-security --data-path ./aasxs --with-db --host 0.0.0.0 --external-blazor http://localhost:5001 2>&1
 #cd
 #cd ./OSSPs/aasx-server-2023-11-06/artefacts/build/Release/AasxServerBlazor/
