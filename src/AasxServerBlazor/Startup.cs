@@ -178,7 +178,7 @@ namespace AasxServerBlazor
             });
 
             // eureka
-            services.AddDiscoveryClient();
+            //services.AddDiscoveryClient();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

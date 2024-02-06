@@ -1,6 +1,6 @@
 # Init MySQL database
 # Use the official MySQL image as a base image
-FROM mysql:latest
+FROM mysql:latest AS database
 
 # Set environment variables for MySQL
 ENV MYSQL_ROOT_PASSWORD=0000
@@ -15,21 +15,30 @@ COPY ./database/init.sql /docker-entrypoint-initdb.d/init.sql
 EXPOSE 3306
 
 # It is expected that this docker is executed in the context of repository root.
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build-env
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /repo/src
 
 # Copy everything else and build
 COPY ./src/ /repo/src/
 COPY ./LICENSE.txt /repo/LICENSE.txt
-COPY ./rebuildAndStart.sh /repo/rebuildAndStart.sh
-COPY ./restartBlazor.sh /repo/restartBlazor.sh
-RUN dotnet publish -c Release -o /out/AasxServerBlazor AasxServerBlazor
+COPY ./rebuildAndStartAtDocker.sh /repo/rebuildAndStart.sh
+COPY ./restartBlazorAtDocker.sh /repo/restartBlazor.sh
+RUN dotnet build -c Release -o /out/AasxServerBlazor/build AasxServerBlazor
+
+FROM build AS publish
+RUN dotnet publish -c Release -o /out/AasxServerBlazor/publish AasxServerBlazor
 
 FROM mcr.microsoft.com/dotnet/aspnet:6.0 as base
 RUN apt-get update && apt-get install -y libgdiplus
+RUN apt-get install -y net-tools
+RUN apt-get install -y curl
+RUN apt-get install -y procps
+RUN apt-get update
+ENV ASPNETCORE_URLS=http://*:5001
 EXPOSE 5001
-COPY --from=build-env /out/AasxServerBlazor/ /AasxServerBlazor/
+COPY --from=publish /out/AasxServerBlazor/publish /AasxServerBlazor/
 COPY ./content-for-demo/ /AasxServerBlazor/
 
 WORKDIR /AasxServerBlazor
 ENTRYPOINT ["/bin/bash", "-c", "./startForDemo.sh"]
+#ENTRYPOINT ["tail", "-f", "/dev/null"]

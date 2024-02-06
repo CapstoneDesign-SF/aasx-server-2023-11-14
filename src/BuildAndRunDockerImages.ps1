@@ -30,9 +30,8 @@ function Main
     Write-Host "The image $imageTag has been built."
 
     docker run `
-        -p 55001:5001 `
-        -p 55000:5000 `
-        --name aasx-server-test `
+        -p 5001:5001 `
+        --name aasx-server-blazor-test `
         $imageTag `
         .
 }
