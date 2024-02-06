@@ -17,6 +17,6 @@ while [ ! -f "$LOG_FILE" ]; do
 done
 
 # 파일이 생성되면 tail 명령 실행
-#tail -f "$LOG_FILE"
+tail -f "$LOG_FILE"
 
-echo "$LOG_FILE is generated"
+#echo "$LOG_FILE is generated"
