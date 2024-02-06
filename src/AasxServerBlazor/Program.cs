@@ -1,7 +1,9 @@
 ﻿using AasSecurity;
+using AasxDatabaseServer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Org.BouncyCastle.Utilities;
 using System;
 using System.IO;
 using System.Threading;
@@ -21,6 +23,21 @@ namespace AasxServerBlazor
             string[] url = config["Kestrel:Endpoints:Http:Url"].Split(':');
             if (url[2] != null)
                 AasxServer.Program.blazorPort = url[2];
+
+            AasxServer.Program.localDbServer = new DatabaseServer(
+                config["Database:Local:Host"],
+                Int32.Parse(config["Database:Local:Port"]),
+                config["Database:Local:DatabaseName"],
+                config["Database:Local:Id"],
+                config["Database:Local:Password"]
+                );
+            AasxServer.Program.cloudDbServer = new DatabaseServer(
+                config["Database:Cloud:Host"],
+                Int32.Parse(config["Database:Cloud:Port"]),
+                config["Database:Cloud:DatabaseName"],
+                config["Database:Cloud:Id"],
+                config["Database:Cloud:Password"]
+                );
 
             var host = CreateHostBuilder(args).Build();
 

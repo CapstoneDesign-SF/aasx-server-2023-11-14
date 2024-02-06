@@ -36,7 +36,7 @@ namespace AasxDatabaseServer
         private static ILogger _logger = ApplicationLogging.CreateLogger("DatabaseServer");
 
 
-        public DatabaseServer(string sServer = "localhost",
+        public DatabaseServer(string sServer = "host.docker.internal",
             int iPort = 3306,
             string sDatabase = "aas_db_test",
             string sId = "root",
@@ -46,11 +46,23 @@ namespace AasxDatabaseServer
                 sServer, iPort, sDatabase, sId, sPw);
         }
 
+        public void setConnectInfo(string sServer = "host.docker.internal",
+            int iPort = 3306,
+            string sDatabase = "aas_db_test",
+            string sId = "root",
+            string sPw = "0000") {
+
+            _connectionAddress = string.Format("Server={0};Port={1};Database={2};Uid={3};Pwd={4}",
+                sServer, iPort, sDatabase, sId, sPw);
+            _logger.LogDebug(_connectionAddress);
+        }
+
         // Method to check MySql server is availlable.
         public bool testConnection()
         {
             try
             {
+                Console.WriteLine(_connectionAddress);
                 using (MySqlConnection mysql = new MySqlConnection(_connectionAddress))
                 {
                     mysql.Open();

@@ -18,7 +18,7 @@ else
 fi
 
 # 디렉토리 경로
-DIR_PATH="artefacts/"
+DIR_PATH="AasxServerBlazor/"
 
 # "artefacts/" 디렉토리가 존재하는지 확인
 if [ -d "$DIR_PATH" ]; then
@@ -31,7 +31,8 @@ else
 fi
 
 #powershell -File ./src/BuildForRelease.ps1
-pwsh -File ./src/BuildForRelease.ps1
+# TODO:Docker 환경에 맞게 변수 설정
+dotnet publish -c Release -o /out/AasxServerBlazor/publish AasxServerBlazor
 sleep 5
 cd ./artefacts/build/Release/AasxServerBlazor
 chmod +x startForDemo.sh
